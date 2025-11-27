@@ -1,0 +1,21 @@
+{
+  "name": "cookcook",
+  "version": "1.0.0",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node main.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@google/genai": "^1.30.0",
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.13.2",
+    "dotenv": "^17.2.3",
+    "undici": "^7.16.0",
+    "youtube-transcript": "^1.2.1"
+  }
+}
