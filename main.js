@@ -20,9 +20,7 @@ async function generateText(
   location = GOOGLE_CLOUD_LOCATION 
 ) {
   const client = new GoogleGenAI({
-    vertexai: true,
-    // project: projectId,
-    // location: location,
+    apiKey: process.env.GEMINI_API_KEY,
   });
 
   const prompt = `请根据视频内容生成一份详细的食谱，必须严格使用 Markdown 格式。

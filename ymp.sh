@@ -26,6 +26,7 @@ extract_from_playlist() {
   echo "$json_data" | jq '[.entries[]
     | select(.title | test("\\[Private video\\]") | not)
     | select(.title | test("\\[Deleted video\\]") | not)
+    | select(.availability != "subscriber_only")
     | .url
   ]
   | map(select(. != null and . != ""))
@@ -57,6 +58,7 @@ extract_from_channel() {
   echo "$json_data" | jq '[.entries[]
     | select(.title | test("\\[Private video\\]") | not)
     | select(.title | test("\\[Deleted video\\]") | not)
+    | select(.availability != "subscriber_only")
     | .url
   ]
   | map(select(. != null and . != ""))
