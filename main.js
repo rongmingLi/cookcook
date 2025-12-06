@@ -23,9 +23,9 @@ async function generateText(
     apiKey: process.env.GEMINI_API_KEY,
   });
 
-  const prompt = `请根据视频内容生成一份详细的食谱，必须严格使用 Markdown 格式。
+  const prompt = `请根据视频判断内容是否包含做菜教程，如果非做菜视频，就生成一则包括标题的摘要。如果是做菜视频则生成一份详细的食谱，必须严格使用 Markdown 格式。
 要求：
-1. 第一行必须是食谱名称（使用 # 一级标题）。
+1. 第一行必须是食谱名称（使用 # 一级标题，字数不超过10个汉字）。
 2. 包含“食材”部分（使用无序列表）。
 3. 包含“步骤”部分（使用有序列表）。
 4. 直接输出 Markdown 内容，严禁使用代码块符号（\`\`\`）包裹。
@@ -249,7 +249,7 @@ async function main() {
           fileName = `Video_${videoId}.md`;
           await logger.warn(`Could not extract title from content, using fallback filename: ${fileName}`);
         }
-
+        fileName.length > 25 && (fileName = fileName.slice(0, 20) + '.md'); // ensure filename length limit
         const filePath = path.join(dirPath, fileName);
         await fs.writeFile(filePath, content);
         await logger.log(`✅ Saved: ${filePath}`);
