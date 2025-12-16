@@ -7,6 +7,16 @@ import dotenv from 'dotenv';
 dotenv.config();
 const GOOGLE_CLOUD_PROJECT = process.env.GOOGLE_CLOUD_PROJECT;
 const GOOGLE_CLOUD_LOCATION = process.env.GOOGLE_CLOUD_LOCATION || 'global';
+const errorKey=[]
+// 支持多个 API key，用逗号分隔
+const GEMINI_API_KEYS = process.env.GEMINI_API_KEY
+  ? process.env.GEMINI_API_KEY.split(',').map(key => key.trim()).filter(key => key.length > 0)
+  : [];
+
+if (GEMINI_API_KEYS.length === 0) {
+  console.error('❌ 错误: 未找到 GEMINI_API_KEY 环境变量');
+  process.exit(1);
+}
 
 import Logger from './lib/logger.js';
 import ProcessedTracker from './lib/tracker.js';
@@ -19,15 +29,11 @@ async function generateText(
   projectId = GOOGLE_CLOUD_PROJECT,
   location = GOOGLE_CLOUD_LOCATION 
 ) {
-  const client = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-  });
-
   const prompt = `请根据视频判断内容是否包含做菜教程，如果非做菜视频，就生成一则包括标题的摘要。如果是做菜视频则生成一份详细的食谱，必须严格使用 Markdown 格式。
 要求：
 1. 第一行必须是食谱名称（使用 # 一级标题，字数不超过10个汉字）。
-2. 包含“食材”部分（使用无序列表）。
-3. 包含“步骤”部分（使用有序列表）。
+2. 包含"食材"部分（使用无序列表）。
+3. 包含"步骤"部分（使用有序列表）。
 4. 直接输出 Markdown 内容，严禁使用代码块符号（\`\`\`）包裹。
 5. 不要包含任何多余的对话、开场白或结束语。
 6. 食材和调料的数量根据视频内容来估算，明确一点。
@@ -41,14 +47,24 @@ async function generateText(
     },
   };
 
-  try {
+  // 尝试所有可用的 API key
+  for (let i = 0; i < GEMINI_API_KEYS.length; i++) {
+    const apiKey = GEMINI_API_KEYS[i];
+    if(errorKey.includes(apiKey)) {
+      continue;
+    }
+    const client = new GoogleGenAI({
+      apiKey: apiKey,
+    });
+
+    try {
       const response = await client.models.generateContent({
+        // model: 'gemini-2.5-flash-lite',
         model: 'gemini-2.5-flash',
-        // model: 'gemini-2.5-pro',
         contents: [ytVideo, prompt],
       });
 
-      console.log(`Response for ${ytUrl} generated.`);
+      console.log(`Response for ${ytUrl} generated using API key + ${apiKey} ${i + 1}/${GEMINI_API_KEYS.length}.`);
       let text = response.text;
       
       // Clean up: remove markdown code block delimiters if present
@@ -59,11 +75,26 @@ async function generateText(
       }
 
       return text;
-  } catch (error) {
-      const errorMsg = `❌ Error processing ${ytUrl}: ${error.message || error}`;
+    } catch (error) {
+      const errorMsg = `❌ API key ${i + 1}/${GEMINI_API_KEYS.length} 处理 ${ytUrl} 时出错: ${error.message || error}`;
       await logger.error(errorMsg);
-      return null;
+     
+      console.log("error-------type--->", error.message)
+      const errorCode = JSON.parse(error.message).error.code
+      // 如果不是最后一个 key，继续尝试下一个
+      if (i < GEMINI_API_KEYS.length - 1 && errorCode === 429) {
+        errorKey.push(apiKey);
+        await logger.log(`🔄 切换到下一个 API key (${i + 2}/${GEMINI_API_KEYS.length})...`);
+        continue;
+      } else {
+        return null
+      }
+    }
   }
+
+  // 所有 key 都失败
+  await logger.error(`❌ 所有 API key 都已尝试或无法处理 ${ytUrl}`);
+  return null;
 }
 
 function sanitizeFilename(filename) {
