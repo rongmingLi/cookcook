@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 const GOOGLE_CLOUD_PROJECT = process.env.GOOGLE_CLOUD_PROJECT;
 const GOOGLE_CLOUD_LOCATION = process.env.GOOGLE_CLOUD_LOCATION || 'global';
-const errorKey=[]
+const errorKey = []
 // 支持多个 API key，用逗号分隔
 const GEMINI_API_KEYS = process.env.GEMINI_API_KEY
   ? process.env.GEMINI_API_KEY.split(',').map(key => key.trim()).filter(key => key.length > 0)
@@ -27,7 +27,7 @@ const tracker = new ProcessedTracker();
 async function generateText(
   ytUrl,
   projectId = GOOGLE_CLOUD_PROJECT,
-  location = GOOGLE_CLOUD_LOCATION 
+  location = GOOGLE_CLOUD_LOCATION
 ) {
   const prompt = `请根据视频判断内容是否包含做菜教程，如果非做菜视频，就生成一则包括标题的摘要。如果是做菜视频则生成一份详细的食谱，必须严格使用 Markdown 格式。
 要求：
@@ -50,7 +50,7 @@ async function generateText(
   // 尝试所有可用的 API key
   for (let i = 0; i < GEMINI_API_KEYS.length; i++) {
     const apiKey = GEMINI_API_KEYS[i];
-    if(errorKey.includes(apiKey)) {
+    if (errorKey.includes(apiKey)) {
       continue;
     }
     const client = new GoogleGenAI({
@@ -63,32 +63,32 @@ async function generateText(
         model: 'gemini-2.5-flash',
         contents: [ytVideo, prompt],
       });
-
+      if (response.text === undefined || response.text === null || response.text === '') { return null }
       console.log(`Response for ${ytUrl} generated using API key + ${apiKey} ${i + 1}/${GEMINI_API_KEYS.length}.`);
       let text = response.text;
-      
       // Clean up: remove markdown code block delimiters if present
       if (text.startsWith('```markdown')) {
-          text = text.replace(/^```markdown\s*/, '').replace(/\s*```$/, '');
+        text = text.replace(/^```markdown\s*/, '').replace(/\s*```$/, '');
       } else if (text.startsWith('```')) {
-          text = text.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        text = text.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
 
       return text;
     } catch (error) {
       const errorMsg = `❌ API key ${i + 1}/${GEMINI_API_KEYS.length} 处理 ${ytUrl} 时出错: ${error.message || error}`;
       await logger.error(errorMsg);
-     
-      console.log("error-------type--->", error.message)
-      const errorCode = JSON.parse(error.message).error.code
+
+      // console.log("error-------type--->", error.message)
+
       // 如果不是最后一个 key，继续尝试下一个
-      if (i < GEMINI_API_KEYS.length - 1 && errorCode === 429) {
-        errorKey.push(apiKey);
-        await logger.log(`🔄 切换到下一个 API key (${i + 2}/${GEMINI_API_KEYS.length})...`);
-        continue;
-      } else {
-        return null
+      if (i < GEMINI_API_KEYS.length - 1 ) {
+        if (`${error.message || error}`.indexOf(`"code":429`)>-1) {
+          errorKey.push(apiKey);
+          await logger.log(`🔄 切换到下一个 API key (${i + 2}/${GEMINI_API_KEYS.length})...`);
+          continue;
+        }
       }
+      return null;
     }
   }
 
@@ -98,37 +98,37 @@ async function generateText(
 }
 
 function sanitizeFilename(filename) {
-    // Replace invalid filename characters with underscore
-    return filename.replace(/[<>:"/\\|?*]/g, '_').trim();
+  // Replace invalid filename characters with underscore
+  return filename.replace(/[<>:"/\\|?*]/g, '_').trim();
 }
 
 function extractTitleFromMarkdown(content) {
-    if (!content) return null;
-    
-    // Try to find the first Markdown header (# Title)
-    const headerMatch = content.match(/^#\s+(.+)$/m);
-    if (headerMatch) {
-        return headerMatch[1].trim();
-    }
+  if (!content) return null;
 
-    // Fallback: Find the first non-empty line that isn't a code block
-    const lines = content.split('\n');
-    for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith('```')) {
-            // Remove common markdown formatting chars from the start if present (like ** or *)
-            return trimmed.replace(/^[*#> -]+/, '').trim();
-        }
+  // Try to find the first Markdown header (# Title)
+  const headerMatch = content.match(/^#\s+(.+)$/m);
+  if (headerMatch) {
+    return headerMatch[1].trim();
+  }
+
+  // Fallback: Find the first non-empty line that isn't a code block
+  const lines = content.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('```')) {
+      // Remove common markdown formatting chars from the start if present (like ** or *)
+      return trimmed.replace(/^[*#> -]+/, '').trim();
     }
-    
-    return null;
+  }
+
+  return null;
 }
 
 async function main() {
   await logger.init();
   await tracker.load();
 
-  
+
   // Parse CLI args or environment variables for input
   const argv = process.argv.slice(2);
   let inputArg = null;
@@ -297,27 +297,27 @@ async function main() {
     }
   }
 
-    
 
-    // Summary log
-    const separator = '='.repeat(70);
-    await logger.log('\n' + separator);
-    await logger.log('📊 Processing Summary');
-    await logger.log(separator);
-    await logger.log(`✅ Successful: ${successCount}`);
-    await logger.log(`❌ Failed: ${failureCount}`);
-    await logger.log(`⏭️  Skipped (already processed): ${skippedCount}`);
-    await logger.log(`📈 Total: ${successCount + failureCount + skippedCount}`);
-    
-    if (failedUrls.length > 0) {
-        await logger.log('\n❌ Failed URLs (will retry next run):');
-        failedUrls.forEach((url, index) => {
-            logger.log(`   ${index + 1}. ${url}`);
-        });
-    }
-    await logger.log(separator);
-    await logger.log(`\n✨ Log file saved to: ${logger.logPath}`);
-    await logger.log(`📋 Processed records saved to: ${tracker.trackerFile}\n`);
+
+  // Summary log
+  const separator = '='.repeat(70);
+  await logger.log('\n' + separator);
+  await logger.log('📊 Processing Summary');
+  await logger.log(separator);
+  await logger.log(`✅ Successful: ${successCount}`);
+  await logger.log(`❌ Failed: ${failureCount}`);
+  await logger.log(`⏭️  Skipped (already processed): ${skippedCount}`);
+  await logger.log(`📈 Total: ${successCount + failureCount + skippedCount}`);
+
+  if (failedUrls.length > 0) {
+    await logger.log('\n❌ Failed URLs (will retry next run):');
+    failedUrls.forEach((url, index) => {
+      logger.log(`   ${index + 1}. ${url}`);
+    });
+  }
+  await logger.log(separator);
+  await logger.log(`\n✨ Log file saved to: ${logger.logPath}`);
+  await logger.log(`📋 Processed records saved to: ${tracker.trackerFile}\n`);
 }
 
 main().catch(async (error) => {
@@ -330,3 +330,4 @@ main().catch(async (error) => {
   }
   process.exit(1);
 });
+
