@@ -297,6 +297,7 @@ async function main() {
         await logger.error(`Failed to generate recipe for: ${url}`);
         failureCount++;
         failedUrls.push(url);
+        tracker.add(url);
         // Do NOT mark as processed if generation failed, so we can retry next time
       }
     }
