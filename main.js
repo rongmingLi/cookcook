@@ -18,6 +18,13 @@ if (GEMINI_API_KEYS.length === 0) {
   process.exit(1);
 }
 
+// 请求间隔（毫秒），仅通过环境变量配置：REQUEST_DELAY_MS
+const DEFAULT_REQUEST_DELAY_MS = 60000;
+const REQUEST_DELAY_MS = (() => {
+  const v = parseInt(process.env.REQUEST_DELAY_MS, 10);
+  return (!Number.isNaN(v) && v >= 0) ? v : DEFAULT_REQUEST_DELAY_MS;
+})();
+
 import Logger from './lib/logger.js';
 import ProcessedTracker from './lib/tracker.js';
 
@@ -125,9 +132,17 @@ function extractTitleFromMarkdown(content) {
   return null;
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function main() {
   await logger.init();
   await tracker.load();
+
+
+  await logger.log(`Using REQUEST_DELAY_MS=${REQUEST_DELAY_MS}ms`);
+  
 
 
   // Parse CLI args or environment variables for input
@@ -299,6 +314,11 @@ async function main() {
         failedUrls.push(url);
         tracker.add(url);
         // Do NOT mark as processed if generation failed, so we can retry next time
+      }
+      // 等待配置的间隔后再处理下一个（毫秒）
+      if (REQUEST_DELAY_MS > 0) {
+        await logger.log(`⏱️  Waiting ${REQUEST_DELAY_MS}ms before next request...`);
+        await sleep(REQUEST_DELAY_MS);
       }
     }
   }
