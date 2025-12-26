@@ -54,6 +54,9 @@ async function generateText(
     },
   };
 
+  // 从环境变量读取模型名，默认使用 gemini-2.5-flash
+  const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
   // 尝试所有可用的 API key
   for (let i = 0; i < GEMINI_API_KEYS.length; i++) {
     const apiKey = GEMINI_API_KEYS[i];
@@ -66,12 +69,11 @@ async function generateText(
 
     try {
       const response = await client.models.generateContent({
-        // model: 'gemini-2.5-flash-lite',
-        model: 'gemini-2.5-flash',
+        model: GEMINI_MODEL,
         contents: [ytVideo, prompt],
       });
       if (response.text === undefined || response.text === null || response.text === '') { return null }
-      console.log(`Response for ${ytUrl} generated using API key + ${apiKey} ${i + 1}/${GEMINI_API_KEYS.length}.`);
+      console.log(`Response for ${ytUrl} generated using API key ${i + 1}/${GEMINI_API_KEYS.length} with model ${GEMINI_MODEL}.`);
       let text = response.text;
       // Clean up: remove markdown code block delimiters if present
       if (text.startsWith('```markdown')) {
@@ -82,7 +84,7 @@ async function generateText(
 
       return text;
     } catch (error) {
-      const errorMsg = `❌ API key ${i + 1}/${GEMINI_API_KEYS.length} 处理 ${ytUrl} 时出错: ${error.message || error}`;
+      const errorMsg = `❌ API key ${i + 1}/${GEMINI_API_KEYS.length} 使用模型 ${GEMINI_MODEL} 处理 ${ytUrl} 时出错: ${error.message || error}`;
       await logger.error(errorMsg);
 
       // console.log("error-------type--->", error.message)
@@ -316,7 +318,7 @@ async function main() {
         // Do NOT mark as processed if generation failed, so we can retry next time
       }
       // 等待配置的间隔后再处理下一个（毫秒）
-      if (REQUEST_DELAY_MS > 0) {
+      if (REQUEST_DELAY_MS > 0 && errorKey.length < GEMINI_API_KEYS.length) {
         await logger.log(`⏱️  Waiting ${REQUEST_DELAY_MS}ms before next request...`);
         await sleep(REQUEST_DELAY_MS);
       }
