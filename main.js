@@ -87,14 +87,14 @@ async function generateText(
 
       // console.log("error-------type--->", error.message)
 
-      
-      if (`${error.message || error}`.indexOf(`"code":429`)>-1) { errorKey.push(apiKey);}
+
+      if (`${error.message || error}`.indexOf(`"code":429`) > -1) {
+        errorKey.push(apiKey);
         // 如果不是最后一个 key，继续尝试下一个
-      if (i < GEMINI_API_KEYS.length - 1 ) {
-        
+        if (i < GEMINI_API_KEYS.length - 1) {
           await logger.log(`🔄 切换到下一个 API key (${i + 2}/${GEMINI_API_KEYS.length})...`);
           continue;
-        
+        }
       }
       return null;
     }
@@ -142,7 +142,7 @@ async function main() {
 
 
   await logger.log(`Using REQUEST_DELAY_MS=${REQUEST_DELAY_MS}ms`);
-  
+
 
 
   // Parse CLI args or environment variables for input
@@ -266,9 +266,9 @@ async function main() {
     await logger.log(`Total URLs in file: ${urls.length}`);
 
     for (const url of urls) {
-       if (errorKey.length === GEMINI_API_KEYS.length) {
+      if (errorKey.length === GEMINI_API_KEYS.length) {
         await logger.error(`All API keys have been rate-limited. Stopping processing.`);
-        break ;
+        break;
       }
       // Skip if already processed
       if (tracker.has(url)) {
@@ -277,7 +277,7 @@ async function main() {
         skippedUrls.push(url);
         continue;
       }
-      
+
       await logger.log(`\n📝 Processing: ${url}`);
       const content = await generateText(url);
 
