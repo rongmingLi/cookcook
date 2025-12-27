@@ -8,12 +8,12 @@ cd /home/cookcook/
 CURRENT_MODEL="${GEMINI_MODEL:-gemini-2.5-flash}"
 FALLBACK_MODEL="gemini-3-flash-preview"
 LOG_DIR="logs"
-MODEL_STATE_FILE=".model_state"
+# MODEL_STATE_FILE=".model_state"
 
-# 读取保存的模型状态
-if [ -f "$MODEL_STATE_FILE" ]; then
-  CURRENT_MODEL=$(cat "$MODEL_STATE_FILE")
-fi
+# # 读取保存的模型状态
+# if [ -f "$MODEL_STATE_FILE" ]; then
+#   CURRENT_MODEL=$(cat "$MODEL_STATE_FILE")
+# fi
 
 echo "🚀 当前使用模型: $CURRENT_MODEL"
 
@@ -33,7 +33,7 @@ if [ $EXIT_CODE -ne 0 ] || [ "$CURRENT_MODEL" = "gemini-2.5-flash" ]; then
       echo ""
       echo "⚠️  检测到 gemini-2.5-flash 配额已用完 (429 错误)"
       echo "🔄 切换到备用模型: $FALLBACK_MODEL"
-      echo "$FALLBACK_MODEL" > "$MODEL_STATE_FILE"
+      # echo "$FALLBACK_MODEL" > "$MODEL_STATE_FILE"
       
       # 使用新模型重新运行
       export GEMINI_MODEL="$FALLBACK_MODEL"
